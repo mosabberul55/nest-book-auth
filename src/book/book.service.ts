@@ -26,7 +26,8 @@ export class BookService {
       .find({ ...search })
       .skip(skip)
       .limit(resPerPage)
-      .populate('author');
+      .populate(['author', 'tags']);
+
     const lastPage = Math.ceil(total / resPerPage);
     const from = skip + 1;
     const to = skip + books.length;
