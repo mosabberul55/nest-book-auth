@@ -6,6 +6,7 @@ import {
   IsString,
 } from 'class-validator';
 import { Category } from '../entities/book.entity';
+import mongoose from 'mongoose';
 
 export class CreateBookDto {
   @IsNotEmpty()
@@ -18,7 +19,7 @@ export class CreateBookDto {
 
   @IsNotEmpty()
   @IsString()
-  readonly author: string;
+  readonly author: mongoose.Schema.Types.ObjectId;
 
   @IsNotEmpty()
   @IsNumber()
