@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 export enum Category {
   ADVENTURE = 'Adventure',
@@ -12,13 +12,13 @@ export enum Category {
   timestamps: true,
 })
 export class Book {
-  @Prop()
+  @Prop({ required: true })
   title: string;
 
-  @Prop()
+  @Prop({ default: null })
   description?: string;
 
-  @Prop()
+  @Prop({ type: mongoose.Schema.Types.ObjectId, ref: 'Author' })
   author: mongoose.Schema.Types.ObjectId;
 
   @Prop()

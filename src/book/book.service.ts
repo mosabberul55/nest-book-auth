@@ -25,7 +25,8 @@ export class BookService {
     const books = await this.bookModel
       .find({ ...search })
       .skip(skip)
-      .limit(resPerPage);
+      .limit(resPerPage)
+      .populate('author');
     const lastPage = Math.ceil(total / resPerPage);
     const from = skip + 1;
     const to = skip + books.length;

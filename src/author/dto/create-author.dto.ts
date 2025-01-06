@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsOptional, IsString } from "class-validator";
 
 export class CreateAuthorDto {
   @IsNotEmpty()
@@ -7,6 +7,7 @@ export class CreateAuthorDto {
 
   @IsOptional()
   @IsString()
+  @IsEmail()
   readonly email?: string;
 
   @IsNotEmpty()

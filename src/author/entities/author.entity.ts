@@ -21,3 +21,10 @@ export class Author {
 }
 
 export const AuthorSchema = SchemaFactory.createForClass(Author);
+AuthorSchema.virtual('books', {
+  ref: 'Book',
+  localField: '_id',
+  foreignField: 'author',
+});
+AuthorSchema.set('toObject', { virtuals: true });
+AuthorSchema.set('toJSON', { virtuals: true });

@@ -12,7 +12,7 @@ export class AuthorService {
   }
 
   findAll(): Promise<Author[]> {
-    return this.authorModel.find();
+    return this.authorModel.find().populate('books');
   }
 
   findOne(id: string) {
