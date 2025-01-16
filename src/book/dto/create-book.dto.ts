@@ -4,8 +4,8 @@ import {
   IsNotEmpty,
   IsNumber,
   IsOptional,
-  IsString
-} from "class-validator";
+  IsString,
+} from 'class-validator';
 import { Category } from '../entities/book.entity';
 import mongoose from 'mongoose';
 
