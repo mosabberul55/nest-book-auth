@@ -1,14 +1,26 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { User } from '../user/entities/user.entity';
 import { Model } from 'mongoose';
 import { SignupDto } from './dto/signup.dto';
 import * as bcrypt from 'bcrypt';
 import { LoginDto } from './dto/login.dto';
+import { JwtService } from '@nestjs/jwt';
+import { RefreshToken } from './entities/refresh-token.entity';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthService {
-  constructor(@InjectModel(User.name) private userModel: Model<User>) {}
+  constructor(
+    @InjectModel(User.name) private userModel: Model<User>,
+    @InjectModel(RefreshToken.name)
+    private refreshTokenModel: Model<RefreshToken>,
+    private jwtService: JwtService,
+  ) {}
 
   async signUp(SignupDto: SignupDto) {
     //check if user already exists
@@ -21,8 +33,10 @@ export class AuthService {
       ...SignupDto,
       password: hashedPassword,
     });
+    await newUser.save();
 
-    return newUser.save();
+    const token = await this.generateToken(newUser);
+    return { token: token, user: newUser };
   }
 
   async login(LoginDto: LoginDto) {
@@ -36,6 +50,42 @@ export class AuthService {
     if (!isMatch) {
       throw new BadRequestException('Invalid credentials');
     }
-    return user;
+    const token = await this.generateToken(user);
+    return { token: token, user: user };
+  }
+
+  async getProfile(userId: string) {
+    return this.userModel.findById(userId);
+  }
+
+  async refreshToken(refreshToken: string) {
+    const token = await this.refreshTokenModel.findOne({
+      token: refreshToken,
+      expiryDate: { $gte: new Date() },
+    });
+
+    if (!token) {
+      throw new UnauthorizedException('Refresh Token is invalid');
+    }
+    const user = await this.userModel.findById(token.user);
+    return this.generateToken(user);
+  }
+
+  async generateToken(user: User) {
+    const token = this.jwtService.sign({ user }, { expiresIn: '30d' });
+    const refreshToken = uuidv4();
+    await this.storeRefreshToken(refreshToken, user._id);
+    return {
+      accessToken: token,
+      refreshToken: refreshToken,
+    };
+  }
+
+  async storeRefreshToken(refreshToken: string, userId: unknown) {
+    return await this.refreshTokenModel.create({
+      token: refreshToken,
+      user: userId,
+      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
   }
 }

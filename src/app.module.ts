@@ -8,6 +8,7 @@ import { AuthorModule } from './author/author.module';
 import { TagModule } from './tag/tag.module';
 import { AuthModule } from './auth/auth.module';
 import { UserModule } from './user/user.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UserModule } from './user/user.module';
       envFilePath: '.env',
       isGlobal: true,
     }),
+    JwtModule.register({ global: true, secret: process.env.JWT_SECRET }),
     MongooseModule.forRoot(process.env.DB_URI),
     BookModule,
     AuthorModule,
