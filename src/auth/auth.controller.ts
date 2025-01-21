@@ -16,8 +16,8 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-tokens.dto';
 import { AuthGuard } from '../guards/auth.guard';
 import { ChangePasswordDto } from './dto/change-password.dto';
-import { ForgotPasswordDto } from "./dto/forgot-password.dto";
-import { ResetPasswordDto } from "./dto/reset-password.dto";
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -37,7 +37,7 @@ export class AuthController {
   @UseGuards(AuthGuard)
   @Get('profile')
   getProfile(@Req() req) {
-    return this.authService.getProfile(req.user.user._id);
+    return this.authService.getProfile(req.userId);
   }
 
   @Post('refresh')
@@ -55,14 +55,16 @@ export class AuthController {
     @Req() req,
   ) {
     return this.authService.changePassword(
-      req.user.user._id,
+      req.userId,
       changePasswordDto.oldPassword,
       changePasswordDto.newPassword,
     );
   }
 
   @Post('forgot-password')
-  async forgotPassword(@Body(new ValidationPipe()) forgotPasswordDto: ForgotPasswordDto) {
+  async forgotPassword(
+    @Body(new ValidationPipe()) forgotPasswordDto: ForgotPasswordDto,
+  ) {
     return this.authService.forgotPassword(forgotPasswordDto.email);
   }
 

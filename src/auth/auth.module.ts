@@ -6,9 +6,11 @@ import { UserSchema } from '../user/entities/user.entity';
 import { RefreshTokenSchema } from './entities/refresh-token.entity';
 import { ResetToken, ResetTokenSchema } from './entities/reset-token.schema';
 import { MailService } from '../services/mail.service';
+import { RoleModule } from '../role/role.module';
 
 @Module({
   imports: [
+    RoleModule,
     MongooseModule.forFeature([
       {
         name: 'User',
@@ -26,5 +28,6 @@ import { MailService } from '../services/mail.service';
   ],
   controllers: [AuthController],
   providers: [AuthService, MailService],
+  exports: [AuthService],
 })
 export class AuthModule {}

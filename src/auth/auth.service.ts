@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { nanoid } from 'nanoid';
 import { ResetToken } from './entities/reset-token.schema';
 import { MailService } from '../services/mail.service';
+import { RoleService } from '../role/role.service';
 
 @Injectable()
 export class AuthService {
@@ -27,6 +28,7 @@ export class AuthService {
     private resetTokenModel: Model<ResetToken>,
     private jwtService: JwtService,
     private mailService: MailService,
+    private rolesService: RoleService,
   ) {}
 
   async signUp(SignupDto: SignupDto) {
@@ -42,7 +44,7 @@ export class AuthService {
     });
     await newUser.save();
 
-    const token = await this.generateToken(newUser);
+    const token = await this.generateToken(newUser._id);
     return { token: token, user: newUser };
   }
 
@@ -57,7 +59,7 @@ export class AuthService {
     if (!isMatch) {
       throw new BadRequestException('Invalid credentials');
     }
-    const token = await this.generateToken(user);
+    const token = await this.generateToken(user._id);
     return { token: token, user: user };
   }
 
@@ -75,7 +77,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh Token is invalid');
     }
     const user = await this.userModel.findById(token.user);
-    return this.generateToken(user);
+    return this.generateToken(user._id);
   }
 
   async changePassword(
@@ -133,10 +135,10 @@ export class AuthService {
     return { message: 'Password reset successfully' };
   }
 
-  async generateToken(user: User) {
-    const token = this.jwtService.sign({ user }, { expiresIn: '30d' });
+  async generateToken(userId: unknown) {
+    const token = this.jwtService.sign({ userId }, { expiresIn: '10h' });
     const refreshToken = uuidv4();
-    await this.storeRefreshToken(refreshToken, user._id);
+    await this.storeRefreshToken(refreshToken, userId);
     return {
       accessToken: token,
       refreshToken: refreshToken,
@@ -157,5 +159,14 @@ export class AuthService {
         upsert: true,
       },
     );
+  }
+
+  async getUserPermissions(userId: string) {
+    const user = await this.userModel.findById(userId);
+
+    if (!user) throw new BadRequestException();
+
+    const role = await this.rolesService.findOne(user.roleId.toString());
+    return role.permissions;
   }
 }
