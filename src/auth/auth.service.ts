@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
@@ -12,6 +13,9 @@ import { LoginDto } from './dto/login.dto';
 import { JwtService } from '@nestjs/jwt';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { v4 as uuidv4 } from 'uuid';
+import { nanoid } from 'nanoid';
+import { ResetToken } from './entities/reset-token.schema';
+import { MailService } from '../services/mail.service';
 
 @Injectable()
 export class AuthService {
@@ -19,7 +23,10 @@ export class AuthService {
     @InjectModel(User.name) private userModel: Model<User>,
     @InjectModel(RefreshToken.name)
     private refreshTokenModel: Model<RefreshToken>,
+    @InjectModel(ResetToken.name)
+    private resetTokenModel: Model<ResetToken>,
     private jwtService: JwtService,
+    private mailService: MailService,
   ) {}
 
   async signUp(SignupDto: SignupDto) {
@@ -71,6 +78,61 @@ export class AuthService {
     return this.generateToken(user);
   }
 
+  async changePassword(
+    userId: string,
+    oldPassword: string,
+    newPassword: string,
+  ) {
+    const user = await this.userModel.findById(userId);
+    if (!user) {
+      throw new NotFoundException('User not found...');
+    }
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      throw new UnauthorizedException('Wrong credentials');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userModel.updateOne(
+      { _id: userId },
+      { password: hashedPassword },
+    );
+    return { message: 'Password changed successfully' };
+  }
+
+  async forgotPassword(email: string) {
+    const user = await this.userModel.findOne({ email: email });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+    const resetToken = nanoid(64);
+    const expiryDate = new Date();
+    expiryDate.setHours(expiryDate.getHours() + 1);
+    await this.resetTokenModel.create({
+      token: resetToken,
+      user: user._id,
+      expiryDate: expiryDate,
+    });
+    await this.mailService.sendPasswordResetEmail(email, resetToken);
+
+    return { message: 'Password reset link sent to your email' };
+  }
+
+  async resetPassword(newPassword: string, resetToken: string) {
+    const token = await this.resetTokenModel.findOneAndDelete({
+      token: resetToken,
+      expiryDate: { $gte: new Date() },
+    });
+    if (!token) {
+      throw new UnauthorizedException('Invalid or expired reset token');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.userModel.updateOne(
+      { _id: token.user },
+      { password: hashedPassword },
+    );
+    return { message: 'Password reset successfully' };
+  }
+
   async generateToken(user: User) {
     const token = this.jwtService.sign({ user }, { expiresIn: '30d' });
     const refreshToken = uuidv4();
@@ -82,10 +144,18 @@ export class AuthService {
   }
 
   async storeRefreshToken(refreshToken: string, userId: unknown) {
-    return await this.refreshTokenModel.create({
-      token: refreshToken,
-      user: userId,
-      expiryDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    });
+    // Calculate expiry date 3 days from now
+    const expiryDate = new Date();
+    expiryDate.setDate(expiryDate.getDate() + 3);
+
+    await this.refreshTokenModel.updateOne(
+      {
+        user: userId,
+      },
+      { $set: { token: refreshToken, expiryDate: expiryDate } },
+      {
+        upsert: true,
+      },
+    );
   }
 }
